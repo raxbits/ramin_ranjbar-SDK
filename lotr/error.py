@@ -1,10 +1,8 @@
-from typing import Dict
-
-
 class CustomError(Exception):
-    '''
+    """
     custom error class, can be extended for other errors
-    '''
+    """
+
     def __init__(self, message=None) -> None:
         super(CustomError, self).__init__(message)
 

@@ -2,17 +2,13 @@ import json as jsonlib
 
 import os
 from collections import deque
-from concurrent import futures
-from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict
 
 import requests
 from requests.adapters import HTTPAdapter, Retry
-from urllib3 import Retry
 
 import lotr
 from lotr.error import CustomError
-from lotr.logging import logger
 from lotr.utils import is_api_key_valid, auth_formatter
 
 
@@ -38,7 +34,7 @@ class Client:
         self.endpoint = lotr.END_POINT
         self.max_retries = max_retries
         self.timeout = timeout
-        self.sdk_meta = {'version':f"v{lotr.API_VERSION}", 'language': 'python'}
+        self.sdk_meta = {"version": f"v{lotr.API_VERSION}", "language": "python"}
 
         if check_api_key:
             self.check_api_key()
@@ -49,32 +45,40 @@ class Client:
         """
         return {"valid": is_api_key_valid(self.api_key)}
 
-  
+    def _request(self, _url):
+        """
+        Handles request and response communication with specified _url
+        """
+        headers = auth_formatter(self.api_key)
+        session = requests.Session()
+        retries = Retry(
+            total=self.max_retries,
+            allowed_methods=["GET"],
+            backoff_factor=0.5,
+            status_forcelist=lotr.RETRY_STATUS_CODES,
+        )
+        session.mount("https://", HTTPAdapter(max_retries=self.max_retries))
+        try:
+            response = session.request("GET", _url, headers=headers, json=None, timeout=self.timeout)
+        except:
+            raise CustomError(message=f"Request to LOTR api provider timed out after {self.max_retries}")
+        try:
+            json_response = response.json()
+        except:
+            raise CustomError(message="Failed to decode JSON body.")
+
+        return json_response
+
     def get_movies(self):
         """
         Get list of movies
         """
-        headers = auth_formatter(self.api_key)
-        session = requests.Session()
-        retries = Retry(total = self.max_retries, allowed_methods=['GET'], backoff_factor= 0.5, status_forcelist=lotr.RETRY_STATUS_CODES)
-        session.mount('https://', HTTPAdapter(max_retries= self.max_retries))
-        _url = self.api_url+self.endpoint
-        try:
-            response = session.request('GET', _url,
-                                       headers=headers,
-                                       json=None,
-                                       timeout=self.timeout)
-        except:
-            raise CustomError(message=f'Request to LOTR api provider timed out after {self.max_retries}')
-        try:
-            json_response = response.json()
-        except:
-            raise CustomError(message='Failed to decode JSON body.')
-        movie_list = json_response.get('docs',None)
-
+        _url = self.api_url + self.endpoint
+        json_response = self._request(_url)
+        movie_list = json_response.get("docs", None)
         return jsonlib.dumps(movie_list)
 
-    def get_movie_info(self, _id=None,  name=None):
+    def get_movie_info(self, _id=None, name=None):
         """
         Get list of movies either by name or id
         name (str): name of the movie in full or key words in the title.
@@ -82,58 +86,32 @@ class Client:
         """
         if not name and not _id:
             return CustomError(message="No movie name or id is provided!")
-        headers = auth_formatter(self.api_key)
-        session = requests.Session()
-        retries = Retry(total = self.max_retries, allowed_methods=['GET'], backoff_factor= 0.5, status_forcelist=lotr.RETRY_STATUS_CODES)
-        session.mount('https://', HTTPAdapter(max_retries= self.max_retries))
+
         if not name:
-            _url = self.api_url+self.endpoint+ str(_id)
+            _url = self.api_url + self.endpoint + str(_id)
         else:
-            _url = self.api_url+self.endpoint+ f'?name=/{name}/i'
-        try:
-            response = session.request('GET', _url,
-                                       headers=headers,
-                                       json=None,
-                                       timeout=self.timeout)
-        except:
-            raise CustomError(message=f'Request to LOTR api provider timed out after {self.max_retries}')
-        try:
-            json_response = response.json()
-        except:
-            raise CustomError(message='Failed to decode JSON body.')
-        movie_list = json_response.get('docs',None)
-        
+            _url = self.api_url + self.endpoint + f"?name=/{name}/i"
+
+        json_response = self._request(_url)
+        movie_list = json_response.get("docs", None)
+
         return jsonlib.dumps(movie_list)
-    
+
     def get_movie_quote(self, _id):
         """
         Get movie quotes either by movie name or id
         name (str): name of the movie or part of the movie
         _id (str): movie id of the recieved list from get_movie function
         """
-        headers = auth_formatter(self.api_key)
-        session = requests.Session()
-        retries = Retry(total = self.max_retries, allowed_methods=['GET'], backoff_factor= 0.5, status_forcelist=lotr.RETRY_STATUS_CODES)
-        session.mount('https://', HTTPAdapter(max_retries= self.max_retries))
-        _url = self.api_url+self.endpoint+ str(_id) +'/quote'
-        try:
-            response = session.request('GET', _url,
-                                       headers=headers,
-                                       json=None,
-                                       timeout=self.timeout)
-        except:
-            raise CustomError(message=f'Request to LOTR api provider timed out after {self.max_retries}')
-        try:
-            json_response = response.json()
-        except:
-            raise CustomError(message='Failed to decode JSON body.')
-        movie_list = json_response.get('docs',None)
+        _url = self.api_url + self.endpoint + str(_id) + "/quote"
+        json_response = self._request(_url)
+        movie_list = json_response.get("docs", None)
         if not movie_list:
-            raise CustomError(message='Quotes are only available for the LotR trilogy')
-        
-        quotes = deque() # faster for appending operation than list
+            raise CustomError(message="Quotes are only available for the LotR trilogy")
+
+        quotes = deque()  # faster for appending operation than list
 
         for elem in movie_list:
-            quotes.appendleft(elem.get('dialog'))
-            
+            quotes.appendleft(elem.get("dialog"))
+
         return jsonlib.dumps(list(quotes))

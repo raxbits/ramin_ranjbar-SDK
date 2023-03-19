@@ -7,4 +7,3 @@ RETRY_STATUS_CODES = [429, 500, 502, 503, 504]
 # pkg metadata
 API_VERSION = "1"
 END_POINT = "/movie/"
-

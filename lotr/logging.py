@@ -1,4 +1,4 @@
-#todo: use this while app runs in prod
+# todo: use this logging module if app runs in prod
 
 import logging
 
@@ -9,6 +9,7 @@ console_handler.setLevel(logging.DEBUG)
 
 logger.addHandler(console_handler)
 logger.setLevel(logging.WARNING)
+
 
 # Logging Lvl handlers
 def log_warning():
@@ -21,6 +22,7 @@ def log_error():
 
 def log_critical():
     logger.setLevel(logging.CRITICAL)
+
 
 def log_debug():
     logger.setLevel(logging.DEBUG)
