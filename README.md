@@ -54,3 +54,9 @@ movie_info = client.get_movie_info(_id='5cd95395de30eff6ebccde5d')
 # get quote for a specific movie
 movie_quote = client.get_movie_quote(_id='5cd95395de30eff6ebccde5d')
 ```
+
+## Tests
+To run the test cases, you can run:
+```python
+python -m pytest
+```
